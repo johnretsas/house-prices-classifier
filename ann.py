@@ -101,22 +101,22 @@ from keras.layers import Dropout
 
 maxDiff = y_train.max() - y_train.min()
 
-numberOfClasses = 100
+numberOfClasses = 1000
 
 classStep = maxDiff / numberOfClasses
 
 intervals = []
-for i in range(0, 100):
-    intervals.append([(i*7201), (i*7201 + 7201)])
+for i in range(0, 1000):
+    intervals.append([(i*classStep), (i*classStep + classStep)])
 
-for i in range(0, 100):
+for i in range(0, 1000):
     intervals[i][0] = intervals[i][0] + 34900
     intervals[i][1] = intervals[i][1] + 34900
 
 y_train_classes = y_train.copy()
 
 for i in range(0, len(y_train)):
-        for j in range(0,100):
+        for j in range(0,1000):
             if(y_train[i]>=intervals[j][0] and y_train[i]<=intervals[j][1]):
                 y_train_classes[i] = j
                 
@@ -124,27 +124,43 @@ for i in range(0, len(y_train)):
                 
 y_train_classes = y_train_classes.reshape(-1, 1)
 
-oneHot_y_train = y_train.copy()
+oneHot_y_train = []
+
+for i in range(0, 1168):
+    oneHot_y_train.append([0 for j in range(0,1000)])
+    
+for i in range(0, 1168):
+    oneHot_y_train[i][y_train_classes[i][0] - 1] = 1
+
+oneHot_y_train = np.array(oneHot_y_train)                
 
 
+pairsClassesOnHot = []
+
+for i in range(0, 1168):
+    for j in range(0, 1000):
+        if (oneHot_y_train[i][j] == 1):
+            pairsClassesOnHot.append([y_train_classes[i][0], j])
+            continue
+                       
 # Initialising the ANN
 classifier = Sequential()
 
 # Adding the input layer and the first hidden layer
-classifier.add(Dense(units = 150, kernel_initializer = 'uniform', activation = 'relu', input_dim = 303))
+classifier.add(Dense(units = 30, kernel_initializer = 'uniform', activation = 'relu', input_dim = 303))
 
 # Adding the second hidden layer
-classifier.add(Dense(units = 150, kernel_initializer = 'uniform', activation = 'relu'))
+classifier.add(Dense(units = 30, kernel_initializer = 'uniform', activation = 'relu'))
 
 classifier.add(Dropout(0.5))
 # Adding the output layer
-classifier.add(Dense(units = 66, kernel_initializer = 'uniform', activation = 'softmax'))
+classifier.add(Dense(units = 1000, kernel_initializer = 'uniform', activation = 'softmax'))
 
 # Compiling the ANN
 classifier.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
 
 # Fitting the ANN to the Training set
-classifier.fit(X_train, y_train_classes, batch_size = 10, epochs = 100)
+classifier.fit(X_train, oneHot_y_train , batch_size = 10, epochs = 1000)
 
 # Part 3 - Making predictions and evaluating the model
 
@@ -153,21 +169,17 @@ classifier.fit(X_train, y_train_classes, batch_size = 10, epochs = 100)
 # Predicting the Test set results
 y_pred = classifier.predict(X_test)
 
+maxLocations = []
+for i in range(0,292):
+    maxLocations.append(np.where(y_pred[i] == y_pred[i].max())[0][0])
 
-pairsClassesOnHot = []
+valuesPredicted =[]
+for i in range(0,292):
+    valuesPredicted.append((maxLocations[i] + 1) * classStep + 34900)
 
-for i in range(0, 1168):
-    for j in range(0, 66):
-        if (y_train_classes_oneHot[i][j] == 1):
-            pairsClassesOnHot.append([y_train_classes[i][0], j])
-            continue
-        
-# pairsClasseOnHot havethe matching between a class and the endcoding with one hot.
 
-allClasses= [0 for i in range(0, 100)]
-for i in range(0, 1168):
-    pair = pairsClassesOnHot[i]
-    allClasses[pair[1]] = pair[0]
+y_diff = (y_test - valuesPredicted)
+
     
 # Make predictions classes
 # y_pred = (y_pred > 0.5)
